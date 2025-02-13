@@ -2,53 +2,62 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    public float moveSpeed = 5f; // 移動速度
-    public float jumpForce = 10f; // ジャンプ力
-    public GameObject bulletPrefab; // 弾のPrefab
-    public Transform firePoint; // 弾の発射位置
-    public float fireRate = 0.2f; // 発射間隔
-    private float nextFireTime = 0f; // 次に弾を発射する時間
+    public float moveSpeed = 5f;    // 移動速度
+    public float jumpForce = 5f;    // ジャンプ力
+    private Rigidbody2D rb;         // Rigidbody2Dの参照
+    private bool isGrounded = true; // 地面にいるかどうか
+    public string targetLayerName = "TargetLayer"; // 衝突を検出するレイヤー名
+    public string Exit;
 
-    private Rigidbody2D rb;
-    private bool isGrounded;
+    public GameObject projectilePrefab;  // 発射する球のPrefab
+    public float projectileSpeed = 10f;  // 球の発射速度
 
     void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
+        rb = GetComponent<Rigidbody2D>(); // Rigidbody2Dを取得
     }
 
     void Update()
     {
-        Move();
-        Jump();
-        Fire();
-    }
+        // 左右移動
+        float moveX = Input.GetAxis("Horizontal");
+        rb.velocity = new Vector2(moveX * moveSpeed, rb.velocity.y);
 
-    // 左右の移動
-    void Move()
-    {
-        float moveInput = Input.GetAxis("Horizontal");
-        Vector2 moveVelocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
-        rb.velocity = moveVelocity;
-    }
-
-    // ジャンプ
-    void Jump()
-    {
-        isGrounded = Physics2D.Raycast(transform.position, Vector2.down, 1f, LayerMask.GetMask("Floor"));
-        if (isGrounded && Input.GetKeyDown(KeyCode.V))  // Wキーに変更
+        // スペースキーでジャンプ
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            isGrounded = false;
+        }
+
+        // Eキーで球を発射
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            ShootProjectile();
         }
     }
 
-    // 弾の発射
-    void Fire()
+    // 地面に接触したときに呼ばれる
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (Time.time >= nextFireTime && Input.GetKeyDown(KeyCode.Space))
+        if (collision.gameObject.CompareTag("Ground"))
         {
-            nextFireTime = Time.time + fireRate; // 発射間隔を設定
-            Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
+            isGrounded = true; // 地面にいる場合はジャンプを許可
+        }
+    }
+
+    // 球を発射するメソッド
+    void ShootProjectile()
+    {
+        // プレイヤーが向いている方向で球を発射
+        GameObject projectile = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
+
+        // 球の向きと速度を設定
+        Rigidbody2D projectileRb = projectile.GetComponent<Rigidbody2D>();
+        if (projectileRb != null)
+        {
+            float direction = transform.localScale.x > 0 ? 1 : -1; // プレイヤーの向きに基づく
+            projectileRb.velocity = new Vector2(direction * projectileSpeed, 0); // 水平方向に発射
         }
     }
 }
